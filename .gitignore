@@ -1,0 +1,10 @@
+.env
+venv/
+__pycache__/
+
+# Edge/Chromium browser profile
+profile/
+edge_profile/
+
+# Browser caches
+Cache/
