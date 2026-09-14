@@ -1,7 +1,7 @@
 import time
 
 from browser import page
-from ai import choose_answer
+from aio import choose_answer
 
 
 print()
@@ -28,8 +28,10 @@ EXTRACT_JS = """
         return null;
     }
 
+
     const questionStyle =
         getComputedStyle(question);
+
 
     if (
         questionStyle.display === 'none' ||
@@ -69,12 +71,15 @@ EXTRACT_JS = """
             return null;
         }
 
+
         const value =
             text.innerText.trim();
+
 
         if (!value) {
             return null;
         }
+
 
         return {
             index: index,
@@ -106,6 +111,61 @@ EXTRACT_JS = """
 
 
 # =========================================================
+# CLICK SELECTED OPTION
+# =========================================================
+
+CLICK_OPTION_JS = """
+(selectedText) => {
+
+    const options = [
+        ...document.querySelectorAll(
+            '.answer-option'
+        )
+    ];
+
+
+    for (const option of options) {
+
+        const text = option.querySelector(
+            '.answer-text'
+        );
+
+
+        if (!text) {
+            continue;
+        }
+
+
+        const optionText =
+            text.innerText.trim();
+
+
+        if (
+            optionText.toLowerCase()
+            ===
+            selectedText.trim().toLowerCase()
+        ) {
+
+            option.scrollIntoView({
+                behavior: 'auto',
+                block: 'center'
+            });
+
+
+            option.click();
+
+
+            return true;
+        }
+    }
+
+
+    return false;
+}
+"""
+
+
+# =========================================================
 # SAFE EXTRACTION
 # =========================================================
 
@@ -113,20 +173,26 @@ def extract_state():
 
     try:
 
-        return page.evaluate(EXTRACT_JS)
+        return page.evaluate(
+            EXTRACT_JS
+        )
 
     except Exception as e:
 
         message = str(e)
 
+
         if (
             "Execution context was destroyed"
             in message
+
             or
+
             "Cannot find context with specified id"
             in message
         ):
             return None
+
 
         return None
 
@@ -140,8 +206,10 @@ def make_state_key(state):
     if not state:
         return None
 
+
     return (
         state["question"],
+
         tuple(
             answer["text"]
             for answer in state["answers"]
@@ -154,11 +222,12 @@ def make_state_key(state):
 # =========================================================
 
 POLL_INTERVAL_MS = 100
+
 CONFIRM_DELAY_MS = 100
 
 
 # =========================================================
-# WAIT FOR A DIFFERENT QUIZ STATE
+# WAIT FOR DIFFERENT QUIZ STATE
 # =========================================================
 
 def wait_for_new_state(
@@ -168,30 +237,41 @@ def wait_for_new_state(
 
     start = time.perf_counter()
 
+
     while True:
 
         elapsed = (
-            time.perf_counter() - start
+            time.perf_counter()
+            - start
         ) * 1000
 
+
         if elapsed >= timeout_ms:
+
             return None
 
 
         state = extract_state()
 
+
         if state:
 
-            new_key = make_state_key(state)
+            new_key = make_state_key(
+                state
+            )
+
 
             if new_key != old_key:
 
                 # Make sure the new state is stable.
+
                 page.wait_for_timeout(
                     CONFIRM_DELAY_MS
                 )
 
+
                 confirmed = extract_state()
+
 
                 if confirmed:
 
@@ -201,7 +281,13 @@ def wait_for_new_state(
                         )
                     )
 
-                    if confirmed_key == new_key:
+
+                    if (
+                        confirmed_key
+                        ==
+                        new_key
+                    ):
+
                         return confirmed
 
 
@@ -220,8 +306,11 @@ def wait_for_first_question():
 
         state = extract_state()
 
+
         if state:
+
             return state
+
 
         page.wait_for_timeout(
             POLL_INTERVAL_MS
@@ -233,6 +322,7 @@ def wait_for_first_question():
 # =========================================================
 
 question_number = 0
+
 last_key = None
 
 
@@ -246,7 +336,9 @@ while True:
 
         if last_key is None:
 
-            state = wait_for_first_question()
+            state = (
+                wait_for_first_question()
+            )
 
         else:
 
@@ -254,6 +346,7 @@ while True:
                 old_key=last_key,
                 timeout_ms=30000
             )
+
 
             if state is None:
 
@@ -269,9 +362,13 @@ while True:
         # -------------------------------------------------
 
         question = state["question"]
+
         answers = state["answers"]
 
-        current_key = make_state_key(state)
+
+        current_key = make_state_key(
+            state
+        )
 
 
         # -------------------------------------------------
@@ -279,6 +376,7 @@ while True:
         # -------------------------------------------------
 
         if current_key == last_key:
+
             continue
 
 
@@ -291,39 +389,52 @@ while True:
 
         print()
         print("=" * 60)
+
         print(
             f"QUESTION #{question_number}"
         )
+
         print("=" * 60)
+
 
         print()
         print(question)
 
+
         print()
         print("OPTIONS:")
 
-        for i, answer in enumerate(answers):
 
-            letter = chr(65 + i)
+        for i, answer in enumerate(
+            answers
+        ):
+
+            letter = chr(
+                65 + i
+            )
+
 
             print(
                 f"{letter}. "
                 f"{answer['text']}"
             )
 
+
         print("=" * 60)
 
 
         # -------------------------------------------------
-        # ASK GROQ
+        # ASK OPENROUTER
         # -------------------------------------------------
 
         start = time.perf_counter()
+
 
         result = choose_answer(
             question,
             answers
         )
+
 
         elapsed = (
             time.perf_counter()
@@ -338,21 +449,27 @@ while True:
         if result:
 
             selected = (
-                str(result["answer"])
-                .strip()
+                str(
+                    result["answer"]
+                ).strip()
             )
 
 
-            # Find which letter corresponds
-            # to the selected option text.
+            # -------------------------------------------------
+            # FIND MATCHING LETTER
+            # -------------------------------------------------
 
             matching_letter = None
 
 
-            for i, answer in enumerate(answers):
+            for i, answer in enumerate(
+                answers
+            ):
 
                 if (
-                    answer["text"].strip().lower()
+                    answer["text"]
+                    .strip()
+                    .lower()
                     ==
                     selected.lower()
                 ):
@@ -364,6 +481,10 @@ while True:
                     break
 
 
+            # -------------------------------------------------
+            # RESULT BOX
+            # -------------------------------------------------
+
             print()
 
             print(
@@ -372,47 +493,88 @@ while True:
 
             print()
 
+
             print(
                 "        ████████████████████████████"
             )
 
             print(
-                "        █         GROQ ANSWER       █"
+                "        █     OPENROUTER ANSWER     █"
             )
 
             print(
                 "        ████████████████████████████"
             )
+
 
             print()
+
 
             if matching_letter:
 
                 print(
-                    f"        ANSWER: {matching_letter}"
+                    f"        ANSWER: "
+                    f"{matching_letter}"
                 )
+
 
             print(
                 f"        {selected}"
             )
 
+
             print()
+
 
             print(
-                f"        TIME: {elapsed:.2f}s"
+                f"        TIME: "
+                f"{elapsed:.2f}s"
             )
 
+
             print()
+
 
             print(
                 "        ████████████████████████████"
             )
 
+
             print()
+
 
             print(
                 "\033[0m"
             )
+
+
+            # -------------------------------------------------
+            # CLICK ANSWER
+            # -------------------------------------------------
+
+            print(
+                "Clicking answer..."
+            )
+
+
+            clicked = page.evaluate(
+                CLICK_OPTION_JS,
+                selected
+            )
+
+
+            if clicked:
+
+                print(
+                    "[+] Answer clicked successfully."
+                )
+
+            else:
+
+                print(
+                    "[!] Could not find matching "
+                    "answer button."
+                )
 
 
         else:
@@ -423,9 +585,11 @@ while True:
                 "\033[1;97;41m"
             )
 
+
             print(
-                "        NO VALID GROQ RESPONSE"
+                "        NO VALID OPENROUTER RESPONSE"
             )
+
 
             print(
                 "\033[0m"
@@ -433,21 +597,17 @@ while True:
 
 
         # -------------------------------------------------
-        # SAVE EXACT STATE THAT WAS PROCESSED
+        # SAVE PROCESSED STATE
         # -------------------------------------------------
 
         last_key = current_key
 
 
         # -------------------------------------------------
-        # MANUAL ANSWER
+        # WAIT FOR NEXT QUESTION
         # -------------------------------------------------
 
         print()
-
-        print(
-            "Answer manually."
-        )
 
         print(
             "Waiting for next question..."
@@ -461,7 +621,11 @@ while True:
     except KeyboardInterrupt:
 
         print()
-        print("Stopping...")
+
+        print(
+            "Stopping..."
+        )
+
         break
 
 
@@ -478,4 +642,7 @@ while True:
             repr(e)
         )
 
-        page.wait_for_timeout(100)
+
+        page.wait_for_timeout(
+            100
+        )

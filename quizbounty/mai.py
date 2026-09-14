@@ -40,7 +40,6 @@ EXTRACT_JS = """
         return null;
     }
 
-
     const options = [
         ...document.querySelectorAll(
             '.answer-option'
@@ -84,10 +83,8 @@ EXTRACT_JS = """
     })
     .filter(Boolean);
 
-
     const questionText =
         question.innerText.trim();
-
 
     if (
         !questionText ||
@@ -96,11 +93,58 @@ EXTRACT_JS = """
         return null;
     }
 
-
     return {
         question: questionText,
         answers: options.slice(0, 4)
     };
+}
+"""
+
+
+# =========================================================
+# CLICK SELECTED OPTION
+# =========================================================
+
+CLICK_OPTION_JS = """
+(selectedText) => {
+
+    const options = [
+        ...document.querySelectorAll(
+            '.answer-option'
+        )
+    ];
+
+    for (const option of options) {
+
+        const text = option.querySelector(
+            '.answer-text'
+        );
+
+        if (!text) {
+            continue;
+        }
+
+        const optionText =
+            text.innerText.trim();
+
+        if (
+            optionText.toLowerCase()
+            ===
+            selectedText.trim().toLowerCase()
+        ) {
+
+            option.scrollIntoView({
+                behavior: 'instant',
+                block: 'center'
+            });
+
+            option.click();
+
+            return true;
+        }
+    }
+
+    return false;
 }
 """
 
@@ -158,7 +202,7 @@ CONFIRM_DELAY_MS = 100
 
 
 # =========================================================
-# WAIT FOR A DIFFERENT QUIZ STATE
+# WAIT FOR DIFFERENT QUIZ STATE
 # =========================================================
 
 def wait_for_new_state(
@@ -177,7 +221,6 @@ def wait_for_new_state(
         if elapsed >= timeout_ms:
             return None
 
-
         state = extract_state()
 
         if state:
@@ -186,7 +229,6 @@ def wait_for_new_state(
 
             if new_key != old_key:
 
-                # Make sure the new state is stable.
                 page.wait_for_timeout(
                     CONFIRM_DELAY_MS
                 )
@@ -203,7 +245,6 @@ def wait_for_new_state(
 
                     if confirmed_key == new_key:
                         return confirmed
-
 
         page.wait_for_timeout(
             POLL_INTERVAL_MS
@@ -275,7 +316,7 @@ while True:
 
 
         # -------------------------------------------------
-        # EXTRA DUPLICATE PROTECTION
+        # DUPLICATE PROTECTION
         # -------------------------------------------------
 
         if current_key == last_key:
@@ -332,7 +373,7 @@ while True:
 
 
         # -------------------------------------------------
-        # DISPLAY RESULT
+        # PROCESS RESULT
         # -------------------------------------------------
 
         if result:
@@ -343,11 +384,11 @@ while True:
             )
 
 
-            # Find which letter corresponds
-            # to the selected option text.
+            # -------------------------------------------------
+            # FIND MATCHING LETTER
+            # -------------------------------------------------
 
             matching_letter = None
-
 
             for i, answer in enumerate(answers):
 
@@ -363,6 +404,10 @@ while True:
 
                     break
 
+
+            # -------------------------------------------------
+            # DISPLAY ANSWER
+            # -------------------------------------------------
 
             print()
 
@@ -415,6 +460,34 @@ while True:
             )
 
 
+            # -------------------------------------------------
+            # CLICK ANSWER
+            # -------------------------------------------------
+
+            print(
+                "Clicking answer..."
+            )
+
+            clicked = page.evaluate(
+                CLICK_OPTION_JS,
+                selected
+            )
+
+
+            if clicked:
+
+                print(
+                    "[+] Answer clicked successfully."
+                )
+
+            else:
+
+                print(
+                    "[!] Could not find matching "
+                    "answer button."
+                )
+
+
         else:
 
             print()
@@ -433,21 +506,17 @@ while True:
 
 
         # -------------------------------------------------
-        # SAVE EXACT STATE THAT WAS PROCESSED
+        # SAVE PROCESSED STATE
         # -------------------------------------------------
 
         last_key = current_key
 
 
         # -------------------------------------------------
-        # MANUAL ANSWER
+        # WAIT FOR NEXT QUESTION
         # -------------------------------------------------
 
         print()
-
-        print(
-            "Answer manually."
-        )
 
         print(
             "Waiting for next question..."
