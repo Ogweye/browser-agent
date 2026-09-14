@@ -1,7 +1,7 @@
 import threading
 
-from quizbounty.browser import page
-from quizbounty.ai import choose_answer
+from browser import page
+from ai import choose_answer
 
 print("Waiting for the quiz to start...")
 

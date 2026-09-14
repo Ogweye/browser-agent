@@ -1,11 +1,11 @@
 import time
 
-from quizbounty.browser import (
+from browser import (
     get_quiz,
     wait_for_next_question,
 )
 
-from quizbounty.ai import choose_gemini_answer
+from ai import choose_gemini_answer
 
 
 print()
